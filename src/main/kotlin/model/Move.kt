@@ -12,7 +12,8 @@ class Move(private val value: Int, private val loc: Pair<Int, Int>) {
     }
 
     override fun equals(other: Any?): Boolean {
-        return other.hashCode() == this.hashCode()
+        if(other !is Move) return false
+        return other.value == this.value && other.loc == this.loc
     }
     
     override fun hashCode(): Int {

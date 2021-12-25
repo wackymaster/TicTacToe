@@ -1,13 +1,26 @@
 package tree
 
+import model.Board
 import model.Move
 import java.io.Serializable
+import kotlin.math.ln
+import kotlin.math.sqrt
 
-class MCTreeNode : Serializable {
+class MCTreeNode(private val state: Board, private val color: Boolean) : Serializable {
     private var numerator: Double = 0.0
     private var denominator: Double = 0.0
     private var parent: MCTreeNode? = null
+    private var depth = 0
     var children: HashMap<Move, MCTreeNode> = hashMapOf()
+    private val exploitParameter = sqrt(2.0)
+
+    fun getColor(): Boolean {
+        return color
+    }
+
+    fun getState(): Board {
+        return state
+    }
 
     fun getNumerator(): Double {
         return numerator
@@ -15,6 +28,10 @@ class MCTreeNode : Serializable {
 
     fun getDenominator(): Double {
         return denominator
+    }
+
+    fun getDepth(): Int {
+        return depth
     }
 
     fun getSize(): Int {
@@ -29,7 +46,7 @@ class MCTreeNode : Serializable {
     fun addWin() {
         numerator++
         denominator++
-        parent?.addWin()
+        parent?.addLoss()
     }
 
     fun addDraw() {
@@ -39,20 +56,26 @@ class MCTreeNode : Serializable {
     }
 
     fun addLoss() {
-        numerator--
         denominator++
-        parent?.addLoss()
+        parent?.addWin()
     }
 
-    fun addMove(move: Move): MCTreeNode {
+    fun calculateConfidenceBound(): Double {
+        if (parent == null) return 0.0
+        if (denominator == 0.0) return Double.POSITIVE_INFINITY
+        return (1 - numerator / denominator) + exploitParameter * sqrt(ln(parent!!.denominator) / denominator)
+    }
+
+    fun addMove(move: Move, state: Board): MCTreeNode {
         // Already contain this transition
         if (children.containsKey(move)) {
             return children[move]!!
         }
-        // Add a new node
-        val newChild = MCTreeNode()
-        children[move] = MCTreeNode()
+        // Add a new child. Its color will be the opposite of this
+        val newChild = MCTreeNode(state, !this.color)
+        children[move] = newChild
         newChild.parent = this
+        newChild.depth = this.depth + 1
         return newChild
     }
 
@@ -62,7 +85,11 @@ class MCTreeNode : Serializable {
         for (child in children.values) {
             num += child.numerator
             den += child.denominator
+            if (child.color == this.color) {
+                println("Invalid parent-child coloring")
+                return false
+            }
         }
-        return (num == numerator && den == denominator)
+        return true
     }
 }

@@ -59,4 +59,9 @@ interface Board {
      */
     fun performMove(move: Move) : Boolean
 
+    /**
+     * Returns the active board, if there is one. Otherwise, -1
+     */
+    fun getActive() : Int
+
 }

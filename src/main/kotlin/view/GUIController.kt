@@ -6,6 +6,7 @@ import javafx.scene.Group
 import javafx.scene.Scene
 import javafx.scene.canvas.Canvas
 import javafx.scene.canvas.GraphicsContext
+import javafx.scene.control.Label
 import javafx.scene.image.Image
 import javafx.scene.input.MouseEvent
 import javafx.scene.paint.Color
@@ -20,11 +21,10 @@ import kotlin.math.roundToInt
 class GUIController(primaryStage: Stage) {
     private var gameCanvas: Canvas
     private var board: Board = BoardImpl()
-
-
+    private var playerX = true
     private var xImage: Image = Image(javaClass.getResource("x.png")?.toString())
     private var oImage = Image(javaClass.getResource("o.png")?.toString())
-    private val adversary = MonteCarloAdversary(board, false, 3)
+    private val adversary = MonteCarloAdversary(board, !playerX, 3)
 
     init {
         // JavaFX GUI Setup
@@ -36,16 +36,24 @@ class GUIController(primaryStage: Stage) {
 
         // World Object Viewer
         gameCanvas.onMouseClicked = handleMouseClick()
+        val gameLabel = Label()
+        root.add(gameLabel)
         root.add(gameCanvas)
         primaryStage.apply {
             scene = s
         }
+        // Opponent starts
+        if(!playerX) {
+            val move = adversary.pickMove(board)
+            board.performMoveNoCheck(move)
+        }
+
         draw()
     }
 
     private fun handleMouseClick() = EventHandler { e: MouseEvent? ->
         if (e != null) {
-            if(!board.getStatus().first) return@EventHandler // Game is done
+            if (!board.getStatus().first) return@EventHandler // Game is done
             // Find the corresponding square
             val boardWidth = GUIConstants.BOARD_WIDTH * GUIConstants.WINDOW_WIDTH
             val boardHeight = GUIConstants.BOARD_HEIGHT * GUIConstants.WINDOW_HEIGHT
@@ -58,14 +66,16 @@ class GUIController(primaryStage: Stage) {
             if (rank.roundToInt() !in 0..8 || column.roundToInt() !in 0..8) {
                 return@EventHandler
             }
+            // Create a move and perform it if possible
             val possibleMove = Move(if (board.getMove()) 1 else -1, Pair(rank.roundToInt(), column.roundToInt()))
             val validMove = board.performMove(possibleMove)
             draw()
-            Thread{adversaryMove(validMove)}.start()
+            // Use a separate thread for the opponent response
+            Thread { adversaryMove(validMove) }.start()
         }
     }
 
-    private fun adversaryMove(validMove: Boolean){
+    private fun adversaryMove(validMove: Boolean) {
         if (board.getStatus().first && validMove) { // Adversary picks a move
             val move = adversary.pickMove(board)
             board.performMoveNoCheck(move)
@@ -103,10 +113,12 @@ class GUIController(primaryStage: Stage) {
                     marginY + rank * squareHeight,
                     squareWidth,
                     squareHeight,
-                    board.getPieceVal(rank, column)
+                    rank,
+                    column
                 )
             }
         }
+
         // Thick lines
         lineWidth = GUIConstants.BOLD_LINE_WIDTH
         strokeLine(marginX, marginY + 3 * squareHeight, marginX + boardWidth, marginY + 3 * squareHeight)
@@ -114,6 +126,7 @@ class GUIController(primaryStage: Stage) {
         strokeLine(marginX + 3 * squareWidth, marginY, marginX + 3 * squareWidth, marginY + boardHeight)
         strokeLine(marginX + 6 * squareWidth, marginY, marginX + 6 * squareWidth, marginY + boardHeight)
         // Active board
+        if (!board.getStatus().first) return
         val activeBoard = board.getActive()
         if (activeBoard != -1) {
             stroke = Color.DEEPSKYBLUE
@@ -131,10 +144,19 @@ class GUIController(primaryStage: Stage) {
 
 
     private fun GraphicsContext.drawSquare(
-        x: Double, y: Double, width: Double, height: Double, piece: Int
+        x: Double, y: Double, width: Double, height: Double, rank: Int, column: Int
     ) {
+        // Get piece and check if recently played
+        val piece = board.getPieceVal(rank, column)
+        fill = if (Pair(rank, column) == board.getRecentlyPlayedSquare()) GUIConstants.RECENT_COLOR
+        else GUIConstants.EMPTY_COLOR
+        // Rectangle
         lineWidth = GUIConstants.LINE_WIDTH
+        fillRect(x, y, width, height)
         strokeRect(x, y, width, height)
+
+        // Image for x and o
+
         val imgWidth = 0.8
         val imgHeight = 0.8
         if (piece == Constants.X_SQUARE) {

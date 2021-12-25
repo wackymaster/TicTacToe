@@ -4,6 +4,7 @@ class BoardImpl : Board {
     private lateinit var board: MutableList<MutableList<Int>>
     private var numMoves = 0
     private var xMove = true
+    private var recentlyPlayed: Pair<Int, Int>? = null
     private var activeBoard = -1 // -1 means any board can be played. Otherwise, boards are numbered 0-8 (l-r, u-d)
     var boardStatus = MutableList(9) { 0 } // 1 if x wins, -1 if o wins, MAX_VALUE if draw
 
@@ -19,6 +20,10 @@ class BoardImpl : Board {
 
     override fun getActive(): Int {
         return activeBoard
+    }
+
+    override fun getRecentlyPlayedSquare(): Pair<Int, Int>? {
+        return recentlyPlayed
     }
 
     override fun getReadOnlyBoard(): List<List<Int>> {
@@ -95,6 +100,7 @@ class BoardImpl : Board {
         clone.numMoves = this.numMoves
         clone.xMove = this.xMove
         clone.activeBoard = this.activeBoard
+        clone.recentlyPlayed = this.recentlyPlayed
         // Clone the board status
         clone.boardStatus = mutableListOf()
         this.boardStatus.forEach { clone.boardStatus.add(it) }
@@ -147,6 +153,17 @@ class BoardImpl : Board {
         boardStatus[boardNum] = value
     }
 
+    private fun checkSeries(boardNum: Int, sum: Int) : Boolean {
+        if (sum == Constants.X_SQUARE * 3) {
+            fillBoard(boardNum, Constants.X_SQUARE)
+            return true
+        } else if (sum == Constants.O_SQUARE * 3) {
+            fillBoard(boardNum, Constants.O_SQUARE)
+            return true
+        }
+        return false
+    }
+
     private fun checkBoard(boardNum: Int) {
         val boardRow = 3 * (boardNum / 3)
         val boardCol = 3 * (boardNum % 3)
@@ -158,13 +175,8 @@ class BoardImpl : Board {
                 rowSum += board[boardRow + i][boardCol + j]
                 colSum += board[boardRow + j][boardCol + i]
             }
-            if (rowSum == Constants.X_SQUARE * 3 || colSum == Constants.X_SQUARE * 3) {
-                fillBoard(boardNum, Constants.X_SQUARE)
-                return
-            } else if (rowSum == Constants.O_SQUARE * 3 || colSum == Constants.O_SQUARE * 3) {
-                fillBoard(boardNum, Constants.O_SQUARE)
-                return
-            }
+            if(checkSeries(boardNum, rowSum)) return
+            if(checkSeries(boardNum, colSum)) return
         }
         // Check diagonals
         var diagSum1 = 0
@@ -173,13 +185,8 @@ class BoardImpl : Board {
             diagSum1 += board[boardRow + i][boardCol + i]
             diagSum2 += board[boardRow + i][boardCol + (2 - i)]
         }
-        if (diagSum1 == Constants.X_SQUARE * 3 || diagSum2 == Constants.X_SQUARE * 3) {
-            fillBoard(boardNum, Constants.X_SQUARE)
-            return
-        } else if (diagSum1 == Constants.O_SQUARE * 3 || diagSum2 == Constants.O_SQUARE * 3) {
-            fillBoard(boardNum, Constants.O_SQUARE)
-            return
-        }
+        if(checkSeries(boardNum, diagSum1)) return
+        if(checkSeries(boardNum, diagSum2)) return
 
         // Now check for cat's game on the board
         var catGame = true
@@ -212,7 +219,7 @@ class BoardImpl : Board {
         if (activeBoard == -1 || boardStatus[activeBoard] != 0) activeBoard = -1
         // Switch turn
         xMove = !xMove
-
+        recentlyPlayed = move.getLoc()
         return
     }
 

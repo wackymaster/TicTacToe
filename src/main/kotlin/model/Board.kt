@@ -11,17 +11,17 @@ interface Board {
      * If the boolean is false, then the int corresponds to the status (1 X wins, 0 draw, -1 O wins)
      * The second value is irrelevant if the first is true
      */
-    fun getStatus() : Pair<Boolean, Int>
+    fun getStatus(): Pair<Boolean, Int>
 
     /**
      * Returns true if X to move, false if O to move
      */
-    fun getMove() : Boolean
+    fun getMove(): Boolean
 
     /**
      * Get the number of moves played
      */
-    fun getNumMoves() : Int
+    fun getNumMoves(): Int
 
     /**
      * Gets the integer value associated with the piece at @rank, @column
@@ -42,7 +42,7 @@ interface Board {
     /**
      * Returns a clone of this board
      */
-    fun clone() : Board
+    fun clone(): Board
 
     /**
      * Returns a list of all legal moves
@@ -57,11 +57,16 @@ interface Board {
     /**
      * Attempts to perform the given move. Returns true if successful
      */
-    fun performMove(move: Move) : Boolean
+    fun performMove(move: Move): Boolean
 
     /**
      * Returns the active board, if there is one. Otherwise, -1
      */
-    fun getActive() : Int
+    fun getActive(): Int
+
+    /**
+     * Returns the most recently played square, if any
+     */
+    fun getRecentlyPlayedSquare(): Pair<Int, Int>?
 
 }

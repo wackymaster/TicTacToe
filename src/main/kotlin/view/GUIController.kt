@@ -6,6 +6,7 @@ import javafx.scene.Group
 import javafx.scene.Scene
 import javafx.scene.canvas.Canvas
 import javafx.scene.canvas.GraphicsContext
+import javafx.scene.image.Image
 import javafx.scene.input.MouseEvent
 import javafx.scene.paint.Color
 import javafx.stage.Stage
@@ -20,12 +21,12 @@ class GUIController(primaryStage: Stage) {
     private var gameCanvas: Canvas
     private var board: Board = BoardImpl()
 
-    //    private var xImage = Image(javaClass.getResource("x.png")?.toString())
-//    private var oImage = Image(javaClass.getResource("o.png")?.toString())
-    private val adversary = MonteCarloAdversary(board, false, 1)
+
+    private var xImage: Image = Image(javaClass.getResource("x.png")?.toString())
+    private var oImage = Image(javaClass.getResource("o.png")?.toString())
+    private val adversary = MonteCarloAdversary(board, false, 3)
 
     init {
-
         // JavaFX GUI Setup
         val width = GUIConstants.WINDOW_WIDTH
         val height = GUIConstants.WINDOW_HEIGHT
@@ -44,6 +45,7 @@ class GUIController(primaryStage: Stage) {
 
     private fun handleMouseClick() = EventHandler { e: MouseEvent? ->
         if (e != null) {
+            if(!board.getStatus().first) return@EventHandler // Game is done
             // Find the corresponding square
             val boardWidth = GUIConstants.BOARD_WIDTH * GUIConstants.WINDOW_WIDTH
             val boardHeight = GUIConstants.BOARD_HEIGHT * GUIConstants.WINDOW_HEIGHT
@@ -57,21 +59,24 @@ class GUIController(primaryStage: Stage) {
                 return@EventHandler
             }
             val possibleMove = Move(if (board.getMove()) 1 else -1, Pair(rank.roundToInt(), column.roundToInt()))
-            if (board.performMove(possibleMove)) {
-                draw()
-                val move = adversary.pickMove(board)
-                board.performMoveNoCheck(move)
-            }
-
+            val validMove = board.performMove(possibleMove)
             draw()
+            Thread{adversaryMove(validMove)}.start()
         }
+    }
+
+    private fun adversaryMove(validMove: Boolean){
+        if (board.getStatus().first && validMove) { // Adversary picks a move
+            val move = adversary.pickMove(board)
+            board.performMoveNoCheck(move)
+        }
+        draw()
     }
 
     private fun draw() {
         val graphicsContext = gameCanvas.graphicsContext2D
         graphicsContext.drawBoard()
     }
-
 
     private fun GraphicsContext.drawBoard() {
         // Color whole background
@@ -130,12 +135,24 @@ class GUIController(primaryStage: Stage) {
     ) {
         lineWidth = GUIConstants.LINE_WIDTH
         strokeRect(x, y, width, height)
+        val imgWidth = 0.8
+        val imgHeight = 0.8
         if (piece == Constants.X_SQUARE) {
-            fill = GUIConstants.X_COLOR
-            fillText("X", x + width / 2, y + width / 2)
+            drawImage(
+                xImage,
+                x + ((1 - imgWidth) / 2 * width),
+                y + ((1 - imgHeight) / 2 * height),
+                imgWidth * width,
+                imgHeight * height
+            )
         } else if (piece == Constants.O_SQUARE) {
-            fill = GUIConstants.O_COLOR
-            fillText("O", x + width / 2, y + width / 2)
+            drawImage(
+                oImage,
+                x + ((1 - imgWidth) / 2 * width),
+                y + ((1 - imgHeight) / 2 * height),
+                imgWidth * width,
+                imgHeight * height
+            )
         }
     }
 }
